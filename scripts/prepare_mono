@@ -26,71 +26,48 @@ fi
 
 echo "no Raspberry PI, search for ubuntu version"
 # check if we are on Ubuntu
-osID=$(cat /etc/os-release | grep -om1 ubuntu)
-if [ "$osID" = "ubuntu" ]; then
-    echo "Ubuntu based OS found, upgrading mono ...please wait..."
-    # check ubuntu version
-    uVer=$(cat /etc/os-release | grep -om1 ippo)
-    if [ "$uVer" = "ippo" ]; then
-      set -e
-      sudo apt install gnupg ca-certificates -y
-      sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
-      # use bionic instead of focal, because focal runs on an update problem (i386..???)
-      echo "deb https://download.mono-project.com/repo/ubuntu stable-bionic main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
-      sudo apt-get update -y
-      sudo apt-get install mono-complete -y
-      sudo apt-get autoremove -y
-      exit 0
-    fi
-    uVer=$(cat /etc/os-release | grep -om1 ammy)
-    if [ "$uVer" = "ammy" ]; then
-      set -e
-      sudo apt install gnupg ca-certificates -y
-      sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
-      echo "deb https://download.mono-project.com/repo/ubuntu stable-focal main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
-      sudo apt update -y
-      sudo apt-get install mono-complete -y
-      sudo apt-get autoremove -y
-      exit 0
-    fi
-    uVer=$(cat /etc/os-release | grep -om1 focal)
-    if [ "$uVer" = "focal" ]; then
-      set -e
-      sudo apt install gnupg ca-certificates -y
-      sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
-      # use bionic instead of focal, because focal runs on an update problem (i386..???)
-      echo "deb https://download.mono-project.com/repo/ubuntu stable-bionic main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
-      sudo apt-get update -y
-      sudo apt-get install mono-complete -y
-      sudo apt-get autoremove -y
-      exit 0
-    fi
-    uVer=$(cat /etc/os-release | grep -om1 bionic)
-    if [ "$uVer" = "bionic" ]; then
-      set -e
-      sudo apt install gnupg ca-certificates -y
-      sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
-      echo "deb https://download.mono-project.com/repo/ubuntu stable-bionic main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
-      sudo apt-get update -y
-      sudo apt-get install mono-complete -y
-      sudo apt-get autoremove -y
-      exit 0
-    fi
-    uVer=$(cat /etc/os-release | grep -om1 xenial)
-    if [ "$uVer" = "xenial" ]; then
-      set -e
-      sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
-      sudo apt install apt-transport-https ca-certificates -y
-      echo "deb https://download.mono-project.com/repo/ubuntu stable-xenial main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
-      sudo apt-get update -y
-      sudo apt-get install mono-complete -y
-      sudo apt-get autoremove -y
-      exit 0
-    fi
-else
+
+osID=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')
+if [ "$osID" = "ubuntu" ] || [ "$osID" = "linuxmint" ]; then
+    echo "Ubuntu-based OS detected ($osID), upgrading mono ...please wait..."
+    uVer=$(grep -oP '(?<=^UBUNTU_CODENAME=).+' /etc/os-release)
+
+    # Map newer Ubuntu versions to the closest supported Mono repo
+    case "$uVer" in
+        jammy|kinetic|lunar|mantic|noble)
+            repo="stable-focal"  # Use focal for newer versions
+            ;;
+        focal)
+            repo="stable-focal"
+            ;;
+        bionic)
+            repo="stable-bionic"
+            ;;
+        xenial)
+            repo="stable-xenial"
+            ;;
+        trusty)
+            repo="stable-trusty"
+            ;;
+        *)
+            echo "Unsupported or unknown Ubuntu version ($uVer). Defaulting to stable-focal."
+            repo="stable-focal"
+            ;;
+    esac
+
     set -e
-    sudo apt install mono-complete
-    echo "unknown OS, upgrade mono manually. See here: https://www.mono-project.com/download/stable/"
+    sudo apt install gnupg ca-certificates -y
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+    echo "deb https://download.mono-project.com/repo/ubuntu $repo main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+    sudo apt-get update -y
+    sudo apt-get install mono-complete -y
+    sudo apt-get autoremove -y
+    echo "Mono installation/upgrade complete for $repo."
     exit 0
+else
+    echo "Unknown OS ($osID). Please install mono manually."
+    echo "Refer to the official guide: https://www.mono-project.com/download/stable/"
+    exit 1
 fi
+
 exit 1
